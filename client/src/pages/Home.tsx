@@ -2,11 +2,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Loader2, LogOut, Zap, Upload, Palette, Settings } from "lucide-react";
+import { Loader2, LogOut, Zap, Upload, MessageCircle } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
-import CanvasEditor from "@/components/CanvasEditor";
 
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -14,9 +13,7 @@ export default function Home() {
   const [subtitle, setSubtitle] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canvasRef = useRef<any>(null);
 
   const generateMutation = trpc.generation.generate.useMutation();
   const userQuery = trpc.user.getProfile.useQuery(undefined, {
@@ -42,22 +39,15 @@ export default function Home() {
 
     setIsGenerating(true);
     try {
-      const result = await generateMutation.mutateAsync({
+      await generateMutation.mutateAsync({
         originalImage: selectedImage,
         title,
         subtitle,
       });
-      setGeneratedImage(result.resultImage);
     } catch (error: any) {
       alert(error.message || "生成失败，请重试");
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const handleDownload = () => {
-    if (canvasRef.current) {
-      canvasRef.current.downloadImage();
     }
   };
 
@@ -90,67 +80,70 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-gray-200 sticky top-0 z-10 bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-red-600">
-            📕 小红书创作助手
-          </h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
-              <Zap className="w-4 h-4 text-red-600" />
-              <span className="font-semibold text-red-600">
-                💎 {userQuery.data?.credits || 0}
-              </span>
+      <header className="border-b border-gray-200 bg-white">
+        <div className="max-w-full px-8 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-red-600">
+              📕 小红书创作助手
+            </h1>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1 bg-red-50 rounded-full border border-red-200">
+                <Zap className="w-4 h-4 text-red-600" />
+                <span className="font-semibold text-red-600 text-sm">
+                  💎 {userQuery.data?.credits || 0}
+                </span>
+              </div>
+              <span className="text-sm text-gray-600">{user?.email}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logout()}
+                className="text-gray-600 hover:text-red-600"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
-            <div className="text-sm text-gray-600">
-              {user?.email}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => logout()}
-              className="gap-2 text-gray-600 hover:text-red-600"
-            >
-              <LogOut className="w-4 h-4" />
-              退出
+          </div>
+
+          {/* Info Section */}
+          <div className="text-center text-xs text-gray-600 space-y-1 mb-4">
+            <p>目前支持 IP 口播型视频，适配性较好</p>
+            <p>对于空镜或无人体出现的照片，可能适配性不强</p>
+            <p>生成的图片暂时无法修改，如需修改可下载后使用美图秀秀等工具二次修订</p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-4">
+            <Button className="bg-red-600 hover:bg-red-700 text-white rounded-full px-6 gap-2">
+              💬 生成封面
+            </Button>
+            <Button variant="outline" className="border-gray-300 text-gray-700 rounded-full px-6 gap-2">
+              📝 爆款文案
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Info Section */}
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-600 mb-2">
-            ℹ️ 目前支持 IP 口播型视频，适配性较好
-          </p>
-          <p className="text-sm text-gray-600 mb-2">
-            ⚠️ 对于空镜或无人体出现的照片，可能适配性不强
-          </p>
-          <p className="text-sm text-gray-600">
-            💡 生成的图片暂时无法修改，如需修改可下载后使用美图秀秀等工具二次修订
-          </p>
-        </div>
-
-        {/* Three Step Process */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Step 1: Upload Materials */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
-                1
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-8 py-8 space-y-8">
+            {/* Step 1: Upload Materials */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs">
+                  1
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">上传素材</h2>
               </div>
-              <h2 className="text-xl font-bold text-gray-900">上传素材</h2>
-            </div>
 
-            <Card className="p-6 border-2 border-dashed border-red-300">
               <div className="space-y-4">
                 {/* Primary Image Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <div className="border border-gray-300 rounded-lg p-6">
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
                     👤 人像/主体 (必填)
                   </label>
                   <input
@@ -162,56 +155,49 @@ export default function Home() {
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full p-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
+                    className="w-full p-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Upload className="w-6 h-6 text-gray-400" />
+                    <Upload className="w-8 h-8 text-gray-400" />
                     <span className="text-sm text-gray-600">点击上传</span>
                   </button>
-                  {selectedImage && (
-                    <div className="mt-3 text-sm text-green-600 font-medium">
-                      ✓ 已选择图片
-                    </div>
-                  )}
                 </div>
 
                 {/* Secondary Image Upload */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <div className="border border-gray-300 rounded-lg p-6">
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
                     🌄 空镜/背景 (0)
                   </label>
-                  <button className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-600">
-                    <Upload className="w-5 h-5" />
+                  <button className="w-full p-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-600">
+                    <Upload className="w-8 h-8" />
                     <span className="text-sm">支持多张上传</span>
                   </button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 mt-3">
                     提示：AI 将优先保留主体人物，并从上传的多张背景中智能选择或拼接。
                   </p>
                 </div>
               </div>
-            </Card>
-          </div>
-
-          {/* Step 2: Select Style */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
-                2
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">选择风格</h2>
             </div>
 
-            <Card className="p-6 border-2 border-dashed border-red-300">
+            {/* Step 2: Select Style */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs">
+                  2
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">选择封面风格</h2>
+              </div>
+
               <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50">
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">
                     预设风格
                   </Button>
-                  <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50">
+                  <Button variant="outline" className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">
                     我的风格库
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     "手绘边框",
                     "户外手写",
@@ -222,7 +208,7 @@ export default function Home() {
                   ].map((style, idx) => (
                     <div
                       key={idx}
-                      className="p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition cursor-pointer text-center"
+                      className="p-4 border border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition cursor-pointer text-center"
                     >
                       <div className="text-xs font-medium text-gray-700">{style}</div>
                     </div>
@@ -233,19 +219,17 @@ export default function Home() {
                   💡 提示：支持多选风格；每生成 1 张图片消耗 1 积分
                 </p>
               </div>
-            </Card>
-          </div>
-
-          {/* Step 3: Detailed Configuration */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
-                3
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">详细配置</h2>
             </div>
 
-            <Card className="p-6 border-2 border-dashed border-red-300">
+            {/* Step 3: Detailed Configuration */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs">
+                  3
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">详细配置</h2>
+              </div>
+
               <div className="space-y-4">
                 {/* Title */}
                 <div>
@@ -276,17 +260,26 @@ export default function Home() {
                 {/* Font Style */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    字体风格
+                    字体风格 (点击预览)
                   </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <option>默认风格</option>
-                    <option>大粗黑体</option>
-                    <option>综艺体</option>
-                    <option>稳重宋体</option>
-                    <option>圆体</option>
-                    <option>手写体</option>
-                    <option>书法体</option>
-                  </select>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      "默认风格",
+                      "大粗黑体",
+                      "综艺体",
+                      "稳重宋体",
+                      "圆体",
+                      "手写体",
+                      "书法体",
+                    ].map((font, idx) => (
+                      <button
+                        key={idx}
+                        className="p-3 border border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition text-xs font-medium text-gray-700"
+                      >
+                        ABC<br />{font}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Aspect Ratio */}
@@ -294,7 +287,7 @@ export default function Home() {
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     图片比例
                   </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option>3:4 (小红书标准)</option>
                     <option>4:3 (横屏视频)</option>
                     <option>2.35:1 (公众号封面)</option>
@@ -320,93 +313,62 @@ export default function Home() {
                   </label>
                   <textarea
                     placeholder="例如：背景虚化一点，人物放在左边，整体色调要偏暖..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
-                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                    rows={4}
                   />
                 </div>
 
                 {/* Batch Mode */}
-                <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                   <input type="checkbox" id="batch" className="w-4 h-4" />
                   <label htmlFor="batch" className="text-sm text-gray-700">
-                    批量模式：生成 6 张变体
+                    <span className="font-semibold">批量模式：为同一风格生成 6 张变体</span>
+                    <p className="text-xs text-gray-600 mt-1">开启后为当前风格生成 6 张不同变体，生成时间较长，请耐心等待</p>
                   </label>
                 </div>
               </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Canvas Preview and Generate Button */}
-        <div className="mt-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Canvas Preview */}
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4">预览</h3>
-              <Card className="p-6 bg-gray-50 border-2 border-dashed border-red-300">
-                <div className="flex items-center justify-center bg-white rounded-lg overflow-hidden">
-                  {generatedImage ? (
-                    <CanvasEditor
-                      ref={canvasRef}
-                      backgroundImage={generatedImage}
-                      title={title}
-                      subtitle={subtitle}
-                    />
-                  ) : (
-                    <div className="w-full aspect-[3/4] flex items-center justify-center text-gray-400">
-                      <div className="text-center">
-                        <p className="text-sm">上传图片并点击生成开始</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col justify-center gap-4">
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || !selectedImage}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-6 text-lg font-semibold gap-2 rounded-lg"
-              >
-                {isGenerating && (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                )}
-                {isGenerating ? "生成中..." : "✨ 生成封面"}
-              </Button>
+            {/* Generate Button */}
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !selectedImage}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold gap-2 rounded-full"
+            >
+              {isGenerating && (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              )}
+              {isGenerating ? "生成中..." : "✨ 生成封面"}
+            </Button>
 
-              <p className="text-sm text-gray-600 text-center">
-                1张图片=1积分，本次预计消耗 1 积分
+            <p className="text-xs text-gray-600 text-center">
+              1张图片=1积分，本次预计消耗 1 积分
+            </p>
+
+            {/* Footer */}
+            <div className="pt-8 border-t border-gray-200 text-center text-xs text-gray-600">
+              <p>Made with ❤️ by Vivi</p>
+              <p className="mt-2">
+                联系作者：
+                <a href="mailto:mengjie.xiao@outlook.com" className="text-red-600 hover:underline">
+                  mengjie.xiao@outlook.com
+                </a>
               </p>
-
-              <Button
-                variant="outline"
-                onClick={handleDownload}
-                disabled={!generatedImage}
-                className="w-full border-red-300 text-red-600 hover:bg-red-50 py-6 text-lg font-semibold rounded-lg"
-              >
-                📥 下载图片
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full border-red-300 text-red-600 hover:bg-red-50 py-6 text-lg font-semibold rounded-lg"
-              >
-                💬 爆款文案
-              </Button>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-600">
-          <p>Made with ❤️ by XHS Cover Generator</p>
-          <p className="mt-2">
-            <a href="#" className="text-red-600 hover:underline">
-              意见反馈
-            </a>
-          </p>
+        {/* Right Fixed Sidebar */}
+        <div className="w-16 bg-white border-l border-gray-200 flex flex-col items-center justify-center gap-6 py-8">
+          {/* Feedback Button */}
+          <button className="w-12 h-24 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center text-xs font-bold transition" style={{writingMode: 'vertical-rl'}}>
+            意见反馈
+          </button>
+
+          {/* Generate Button */}
+          <button className="w-12 h-24 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center text-xs font-bold transition" style={{writingMode: 'vertical-rl'}}>
+            生成封面
+          </button>
         </div>
       </div>
     </div>
