@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, generations, InsertGeneration } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,55 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function deductCreditsAndSaveGeneration(
+  userId: number,
+  generation: Omit<InsertGeneration, 'userId'>
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("[Database] Cannot perform transaction: database not available");
+  }
+
+  try {
+    const user = await getUserById(userId);
+    if (!user || user.credits < 1) {
+      throw new Error("Insufficient credits");
+    }
+
+    await db.update(users)
+      .set({ credits: user.credits - 1 })
+      .where(eq(users.id, userId));
+
+    await db.insert(generations).values({
+      ...generation,
+      userId,
+    });
+  } catch (error) {
+    console.error("[Database] Failed to deduct credits and save generation:", error);
+    throw error;
+  }
+}
+
+export async function getUserGenerations(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get generations: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(generations)
+    .where(eq(generations.userId, userId))
+    .orderBy(generations.createdAt);
+  return result;
+}
